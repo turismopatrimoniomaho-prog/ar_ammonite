@@ -2,63 +2,80 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>WebAR Modelo</title>
+<title>WebAR Mejorado</title>
 
+<!-- A-Frame y AR.js -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
 
+<!-- Hammer.js para gestos -->
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
 
 <style>
-body {
-margin:0;
-overflow:hidden;
-}
+body { margin:0; overflow:hidden; }
 </style>
 
 <script>
+// Componente para gestos: rotar con inercia y zoom persistente
 AFRAME.registerComponent('gesture-handler', {
+  init: function () {
+    const el = this.el
+    const scene = document.querySelector('a-scene')
 
-init: function () {
+    let baseScale = el.getAttribute('scale').x
+    let currentScale = baseScale
 
-const el = this.el
-const scene = document.querySelector('a-scene')
+    let rotation = el.getAttribute('rotation')
+    let velocityY = 0
+    let lastTime = null
 
-let scale = 1
+    const inertia = () => {
+      if (Math.abs(velocityY) > 0.01) {
+        rotation.y += velocityY
+        el.setAttribute("rotation", rotation)
+        velocityY *= 0.92 // fricción
+        requestAnimationFrame(inertia)
+      }
+    }
 
-scene.addEventListener("loaded", () => {
+    scene.addEventListener("loaded", () => {
+      const hammer = new Hammer(scene.canvas)
+      hammer.get('pinch').set({ enable: true })
+      hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL })
 
-const hammer = new Hammer(scene.canvas)
+      // ROTACION SUAVE CON INERCIA
+      hammer.on("panstart", (ev) => {
+        velocityY = 0
+        lastTime = Date.now()
+      })
 
-hammer.get('pinch').set({ enable: true })
-hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL })
+      hammer.on("pan", (ev) => {
+        const now = Date.now()
+        const dt = now - lastTime
+        rotation.y += ev.deltaX * 0.1
+        velocityY = (ev.deltaX * 0.1) / (dt / 16) // velocidad relativa
+        el.setAttribute("rotation", rotation)
+        lastTime = now
+      })
 
-hammer.on("pan", (ev) => {
+      hammer.on("panend", (ev) => {
+        inertia() // aplica inercia al soltar
+      })
 
-let rotation = el.getAttribute("rotation")
+      // ZOOM CON PELLIZCO
+      hammer.on("pinchstart", (ev) => {
+        baseScale = currentScale
+      })
 
-rotation.y += ev.deltaX * 0.1
-
-el.setAttribute("rotation", rotation)
-
-})
-
-hammer.on("pinch", (ev) => {
-
-scale = ev.scale
-
-el.setAttribute("scale", {
-x: scale,
-y: scale,
-z: scale
-})
-
-})
-
-})
-
-}
-
+      hammer.on("pinch", (ev) => {
+        currentScale = baseScale * ev.scale
+        // limitar zoom
+        if(currentScale < 0.2) currentScale = 0.2
+        if(currentScale > 5) currentScale = 5
+        el.setAttribute("scale", { x: currentScale, y: currentScale, z: currentScale })
+      })
+    })
+  }
 })
 </script>
 
@@ -66,28 +83,33 @@ z: scale
 
 <body>
 
-<a-scene
-embedded
-arjs="sourceType: webcam; debugUIEnabled: false;"
->
+<a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
 
-<a-assets>
-<a-asset-item id="modelo" src="ammonite_escala2.glb"></a-asset-item>
-</a-assets>
+  <!-- Activos -->
+  <a-assets>
+    <a-asset-item id="modelo" src="ammonite_escala2.glb"></a-asset-item>
+  </a-assets>
 
-<a-marker type="pattern" url="marker.patt">
+  <!-- Iluminación para modelo brillante -->
+  <a-entity light="type: ambient; intensity: 0.6"></a-entity>
+  <a-entity light="type: directional; intensity: 0.8; position: 1 2 1"></a-entity>
+  <a-entity light="type: directional; intensity: 0.5; position: -1 2 1"></a-entity>
 
-<a-entity
-gltf-model="#modelo"
-scale="2.0 2.0 2.0"
-position="0 0 0"
-rotation="0 0 0"
-gesture-handler>
-</a-entity>
+  <!-- Marcador -->
+  <a-marker type="pattern" url="marker.patt">
 
-</a-marker>
+    <!-- Modelo 3D con gestos -->
+    <a-entity
+      gltf-model="#modelo"
+      scale="1 1 1"
+      position="0 0 0"
+      rotation="0 0 0"
+      gesture-handler
+    ></a-entity>
 
-<a-entity camera></a-entity>
+  </a-marker>
+
+  <a-entity camera></a-entity>
 
 </a-scene>
 
