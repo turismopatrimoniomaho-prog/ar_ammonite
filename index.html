@@ -2,36 +2,88 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>WebAR</title>
+<title>WebAR Modelo</title>
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/aframe-gesture-detector@3.0.0/dist/aframe-gesture-detector.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/aframe-gesture-handler@3.0.0/dist/aframe-gesture-handler.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+
+<style>
+body {
+margin:0;
+overflow:hidden;
+}
+</style>
+
+<script>
+AFRAME.registerComponent('gesture-handler', {
+
+init: function () {
+
+const el = this.el
+const scene = document.querySelector('a-scene')
+
+let scale = 1
+
+scene.addEventListener("loaded", () => {
+
+const hammer = new Hammer(scene.canvas)
+
+hammer.get('pinch').set({ enable: true })
+hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL })
+
+hammer.on("pan", (ev) => {
+
+let rotation = el.getAttribute("rotation")
+
+rotation.y += ev.deltaX * 0.1
+
+el.setAttribute("rotation", rotation)
+
+})
+
+hammer.on("pinch", (ev) => {
+
+scale = ev.scale
+
+el.setAttribute("scale", {
+x: scale,
+y: scale,
+z: scale
+})
+
+})
+
+})
+
+}
+
+})
+</script>
 
 </head>
 
-<body style="margin:0; overflow:hidden;">
+<body>
 
 <a-scene
 embedded
 arjs="sourceType: webcam; debugUIEnabled: false;"
-gesture-detector
 >
 
 <a-assets>
-<a-asset-item id="modelo" src="ammonite.glb"></a-asset-item>
+<a-asset-item id="modelo" src="asset.glb"></a-asset-item>
 </a-assets>
 
 <a-marker type="pattern" url="marker.patt">
 
 <a-entity
 gltf-model="#modelo"
-scale="80.5 80.5 80.5"
+scale="1 1 1"
 position="0 0 0"
-gesture-handler
-></a-entity>
+rotation="0 0 0"
+gesture-handler>
+</a-entity>
 
 </a-marker>
 
